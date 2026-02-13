@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICF-SL Pivot Table Tool</title>
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { margin: 0; padding: 20px; background-color: #ffffff; font-family: 'Oswald', Arial, sans-serif; color: #000000; font-weight: 500; }
+        .page-container { width: 100%; max-width: 1600px; margin: 0 auto; }
+        .icon { width: 20px; height: 20px; fill: currentColor; vertical-align: middle; }
+        .icon-lg { width: 24px; height: 24px; }
+        .icon-xl { width: 32px; height: 32px; }
+        .page-header { background-color: #004080; color: #ffffff; padding: 25px 30px; text-align: center; margin-bottom: 0; border-radius: 8px 8px 0 0; }
+        .logo-row { display: flex; justify-content: center; align-items: center; gap: 30px; margin-bottom: 15px; }
+        .logo-box { background: #ffffff; border-radius: 8px; padding: 10px; display: flex; align-items: center; justify-content: center; }
+        .logo-box img { width: 100px; height: auto; border-radius: 6px; }
+        .page-header h3 { margin: 12px 0 5px; font-size: 14px; font-weight: 700; letter-spacing: 1px; }
+        .page-header .tagline { margin: 0; font-size: 10px; font-weight: 500; font-style: italic; }
+        .page-header h1 { margin: 20px 0 10px; font-size: 24px; font-weight: 700; letter-spacing: 1px; }
+        .page-header .subtitle { font-size: 14px; font-weight: 500; }
+        .roadmap-bar { background: #fff; border: 4px double #004080; border-top: none; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .roadmap-step { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #999; }
+        .roadmap-step.active { color: #004080; font-weight: 700; }
+        .roadmap-step.completed { color: #28a745; }
+        .step-num { width: 32px; height: 32px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+        .roadmap-step.active .step-num { background: #004080; color: #fff; }
+        .roadmap-step.completed .step-num { background: #28a745; color: #fff; }
+        .step-connector { width: 40px; height: 3px; background: #e0e0e0; }
+        .step-connector.completed { background: #28a745; }
+        .content-card { border: 4px double #004080; border-radius: 12px; padding: 12px; background-color: #ffffff; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .content-inner { padding: 20px; }
+        .section-header { background-color: #004080; color: #ffffff; padding: 15px 20px; margin-bottom: 20px; border-radius: 6px; display: flex; align-items: center; gap: 15px; }
+        .section-icon { background: #ffffff; color: #004080; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; }
+        .section-title { font-size: 18px; font-weight: 700; }
+        .upload-box { background: #f8f9fa; padding: 3rem; border-radius: 8px; border: 3px dashed #004080; text-align: center; cursor: pointer; transition: all 0.3s; }
+        .upload-box:hover { background: #e7f3ff; }
+        .upload-box.loaded { border-style: solid; border-color: #28a745; background: #d4edda; }
+        .upload-box h4 { color: #004080; margin-bottom: 0.5rem; font-size: 18px; }
+        .upload-box p { font-size: 13px; color: #666; }
+        .upload-box input { display: none; }
+        .upload-status { font-size: 14px; font-weight: 700; margin-top: 15px; }
+        .upload-status.success { color: #28a745; }
+        .btn { padding: 12px 20px; border: 2px solid #004080; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-family: 'Oswald', Arial, sans-serif; transition: all 0.2s; margin: 4px; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: #004080; color: #fff; }
+        .btn-primary:hover { background: #0056b3; }
+        .btn-secondary { background: #fff; color: #004080; }
+        .btn-secondary:hover { background: #004080; color: #fff; }
+        .btn-success { background: #28a745; color: #fff; border-color: #28a745; }
+        .btn-success:hover { background: #218838; }
+        .btn-info { background: #17a2b8; color: #fff; border-color: #17a2b8; }
+        .btn-lg { padding: 16px 32px; font-size: 15px; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 700; color: #004080; font-size: 13px; }
+        .form-control { width: 100%; padding: 12px 14px; border: 2px solid #004080; border-radius: 6px; font-size: 14px; font-family: 'Oswald', Arial, sans-serif; background: #fff; color: #000; }
+        .form-control:focus { outline: none; border-color: #0056b3; box-shadow: 0 0 0 3px rgba(0,64,128,0.2); }
+        .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px; }
+        .config-card { background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 2px solid #004080; margin: 1rem 0; }
+        .config-card h4 { color: #004080; margin-bottom: 1rem; font-size: 14px; display: flex; align-items: center; gap: 10px; }
+        .config-card.highlight { background: #e7f3ff; }
+        .agg-options { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        .agg-option { padding: 12px 20px; background: #fff; border: 2px solid #dee2e6; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px; transition: all 0.2s; font-family: 'Oswald', Arial, sans-serif; text-align: center; }
+        .agg-option:hover { border-color: #004080; background: #e7f3ff; }
+        .agg-option.selected { background: #004080; color: #fff; border-color: #004080; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; padding: 12px; background: #fff; border: 2px solid #004080; border-radius: 6px; max-height: 200px; overflow-y: auto; }
+        .filter-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+        .filter-item:hover { border-color: #004080; background: #e7f3ff; }
+        .filter-item.selected { border-color: #28a745; background: #d4edda; }
+        .filter-item input { width: 16px; height: 16px; accent-color: #28a745; cursor: pointer; }
+        .filter-item label { cursor: pointer; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .filter-actions { display: flex; gap: 8px; margin-bottom: 8px; }
+        .filter-actions button { padding: 6px 14px; border: 1px solid #004080; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: 'Oswald', Arial, sans-serif; }
+        .filter-actions .sel-all { background: #004080; color: #fff; }
+        .filter-actions .sel-none { background: #fff; color: #004080; }
+        .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px; }
+        .summary-card { background: #f8f9fa; border: 3px solid #004080; border-radius: 8px; padding: 20px; text-align: center; }
+        .summary-card .value { font-size: 28px; font-weight: 700; color: #004080; }
+        .summary-card .label { font-size: 11px; color: #666; margin-top: 5px; font-weight: 600; }
+        .toggle-bar { display: flex; flex-wrap: wrap; gap: 20px; padding: 15px 20px; background: #f8f9fa; border: 2px solid #004080; border-radius: 8px; margin-bottom: 15px; align-items: center; }
+        .toggle-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #004080; }
+        .toggle-item input { width: 18px; height: 18px; accent-color: #004080; }
+        .table-wrapper { overflow: auto; border: 2px solid #004080; border-radius: 8px; margin: 1rem 0; max-height: 600px; }
+        .pivot-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .pivot-table th, .pivot-table td { padding: 10px 12px; border: 1px solid #ccc; white-space: nowrap; }
+        .pivot-table th { background: #004080; color: #fff; font-weight: 700; position: sticky; top: 0; z-index: 10; text-align: center; }
+        .pivot-table td { text-align: right; }
+        .pivot-table td.row-label { text-align: left; background: #e7f3ff; font-weight: 700; color: #004080; position: sticky; left: 0; z-index: 5; }
+        .pivot-table tr:nth-child(even) td:not(.row-label):not(.total-cell):not(.grand-total) { background: #f8f9fa; }
+        .pivot-table tr:hover td:not(.total-cell):not(.grand-total) { background: #e7f3ff; }
+        .pivot-table .total-cell { background: #dce8f5; font-weight: 700; color: #004080; }
+        .pivot-table .grand-total { background: #004080; color: #fff; font-weight: 700; }
+        .button-group { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 25px; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
+        .loading-overlay.hidden { display: none; }
+        .loading-spinner { width: 70px; height: 70px; border: 5px solid #e7f3ff; border-top: 5px solid #004080; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1.5rem; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 1.5rem; font-weight: 700; color: #004080; }
+        .hidden { display: none !important; }
+        .page-footer { background-color: #004080; color: #ffffff; padding: 20px 30px; text-align: center; font-size: 13px; line-height: 1.7; font-weight: 500; border-radius: 0 0 8px 8px; }
+        .page-footer p { margin: 6px 0 0; font-size: 12px; color: #ffffff; }
+        @media (max-width: 900px) { .form-row, .summary-cards { grid-template-columns: 1fr; } .roadmap-bar { justify-content: center; } .filter-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <svg style="display:none;">
+        <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></symbol>
+        <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></symbol>
+        <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+        <symbol id="icon-refresh" viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></symbol>
+        <symbol id="icon-download" viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></symbol>
+        <symbol id="icon-excel" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6zm2-6h2.5l1.5 2.5 1.5-2.5H16l-2.5 3.5L16 20h-2.5l-1.5-2.5-1.5 2.5H8l2.5-3.5L8 14z"/></symbol>
+        <symbol id="icon-chart" viewBox="0 0 24 24"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99l1.5 1.5z"/></symbol>
+        <symbol id="icon-table" viewBox="0 0 24 24"><path d="M3 3v18h18V3H3zm8 16H5v-6h6v6zm0-8H5V5h6v6zm8 8h-6v-6h6v6zm0-8h-6V5h6v6z"/></symbol>
+    </svg>
+
+    <div id="loadingOverlay" class="loading-overlay hidden">
+        <div class="loading-spinner"></div>
+        <div class="loading-text" id="loadingText">Processing...</div>
+    </div>
+
+    <div class="page-container">
+        <div class="page-header">
+            <div class="logo-row"><div class="logo-box"><img src="https://github.com/mohamedsillahkanu/gdp-dashboard-2/raw/6c7463b0d5c3be150aafae695a4bcbbd8aeb1499/ICF-SL.jpg" alt="ICF-SL Logo"></div></div>
+            <h3>Informatics Consultancy Firm-Sierra Leone (ICF-SL)</h3>
+            <p class="tagline">Driving Data-Driven Solutions for Health and Development</p>
+            <h1>PIVOT TABLE TOOL</h1>
+            <p class="subtitle">Upload Data | Build Pivot Tables | Export Results</p>
+        </div>
+
+        <div class="roadmap-bar">
+            <div class="roadmap-step active" id="step1"><div class="step-num">1</div><span>Upload</span></div>
+            <div class="step-connector" id="conn1"></div>
+            <div class="roadmap-step" id="step2"><div class="step-num">2</div><span>Configure</span></div>
+            <div class="step-connector" id="conn2"></div>
+            <div class="roadmap-step" id="step3"><div class="step-num">3</div><span>Generate</span></div>
+            <div class="step-connector" id="conn3"></div>
+            <div class="roadmap-step" id="step4"><div class="step-num">4</div><span>Export</span></div>
+        </div>
+
+        <!-- STEP 1 -->
+        <div class="content-card" id="uploadSection">
+            <div class="content-inner">
+                <div class="section-header"><span class="section-icon">1</span><span class="section-title">UPLOAD DATA FILE</span></div>
+                <div class="upload-box" id="uploadBox" onclick="document.getElementById('fileInput').click()">
+                    <svg class="icon icon-xl" style="color:#004080;margin-bottom:10px;"><use href="#icon-upload"/></svg>
+                    <h4>Click to Upload Excel or CSV File</h4>
+                    <p>Supported formats: .xlsx, .xls, .csv</p>
+                    <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
+                    <div class="upload-status" id="uploadStatus"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="content-card hidden" id="configSection">
+            <div class="content-inner">
+                <div class="section-header"><span class="section-icon">2</span><span class="section-title">CONFIGURE PIVOT TABLE</span></div>
+
+                <div class="config-card highlight">
+                    <h4><svg class="icon"><use href="#icon-table"/></svg> ROW & COLUMN FIELDS</h4>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Row Field *</label>
+                            <select id="rowField" class="form-control" onchange="updateFilters('row')"><option value="">-- Select Row Field --</option></select>
+                            <div id="rowFilterSection" class="hidden" style="margin-top:10px;">
+                                <div class="filter-actions"><button class="sel-all" onclick="toggleAll('rowFilter',true)">Select All</button><button class="sel-none" onclick="toggleAll('rowFilter',false)">Clear All</button></div>
+                                <div class="filter-grid" id="rowFilterGrid"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Column Field *</label>
+                            <select id="colField" class="form-control" onchange="updateFilters('col')"><option value="">-- Select Column Field --</option></select>
+                            <div id="colFilterSection" class="hidden" style="margin-top:10px;">
+                                <div class="filter-actions"><button class="sel-all" onclick="toggleAll('colFilter',true)">Select All</button><button class="sel-none" onclick="toggleAll('colFilter',false)">Clear All</button></div>
+                                <div class="filter-grid" id="colFilterGrid"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <h4><svg class="icon"><use href="#icon-chart"/></svg> VALUE FIELD & AGGREGATION</h4>
+                    <div class="form-group">
+                        <label>Value Field *</label>
+                        <select id="valueField" class="form-control"><option value="">-- Select Value Field --</option></select>
+                    </div>
+                    <label style="display:block;font-weight:700;color:#004080;font-size:13px;margin-bottom:8px;">Aggregation Method</label>
+                    <div class="agg-options">
+                        <div class="agg-option selected" data-agg="sum" onclick="selectAgg(this)">SUM</div>
+                        <div class="agg-option" data-agg="count" onclick="selectAgg(this)">COUNT</div>
+                        <div class="agg-option" data-agg="average" onclick="selectAgg(this)">AVERAGE</div>
+                        <div class="agg-option" data-agg="min" onclick="selectAgg(this)">MIN</div>
+                        <div class="agg-option" data-agg="max" onclick="selectAgg(this)">MAX</div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-success btn-lg" onclick="generatePivot()"><svg class="icon"><use href="#icon-play"/></svg> GENERATE PIVOT TABLE</button>
+                    <button class="btn btn-secondary" onclick="resetConfig()"><svg class="icon"><use href="#icon-refresh"/></svg> Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="content-card hidden" id="resultsSection">
+            <div class="content-inner">
+                <div class="section-header"><span class="section-icon">3</span><span class="section-title">PIVOT TABLE RESULTS</span></div>
+                <div class="summary-cards" id="summaryCards"></div>
+                <div class="toggle-bar">
+                    <div class="toggle-item"><input type="checkbox" id="togRowTotals" checked onchange="renderTable()"><label for="togRowTotals">Row Totals</label></div>
+                    <div class="toggle-item"><input type="checkbox" id="togColTotals" checked onchange="renderTable()"><label for="togColTotals">Column Totals</label></div>
+                    <div class="toggle-item"><input type="checkbox" id="togGrandTotal" checked onchange="renderTable()"><label for="togGrandTotal">Grand Total</label></div>
+                </div>
+                <div class="table-wrapper" id="tableWrapper"></div>
+                <div class="button-group">
+                    <button class="btn btn-success btn-lg" onclick="exportExcel()"><svg class="icon"><use href="#icon-excel"/></svg> Download Excel</button>
+                    <button class="btn btn-info btn-lg" onclick="exportCSV()"><svg class="icon"><use href="#icon-download"/></svg> Download CSV</button>
+                    <button class="btn btn-secondary btn-lg" onclick="resetAll()"><svg class="icon"><use href="#icon-refresh"/></svg> Start Over</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="page-footer">
+            <p style="margin:0;font-weight:700;">National Malaria Control Programme</p>
+            <p>Ministry of Health, Sierra Leone</p>
+            <p style="font-size:10px;">© 2025 ICF-SL | Pivot Table Tool v1.0</p>
+        </div>
+    </div>
+
+    <script>
+        let rawData = [], allColumns = [], numericCols = [];
+        let pivotResult = null, currentAgg = 'sum', fileName = '';
+
+        function showLoading(t) { document.getElementById('loadingText').textContent = t || 'Processing...'; document.getElementById('loadingOverlay').classList.remove('hidden'); }
+        function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+
+        function updateRoadmap(step) {
+            for (let i = 1; i <= 4; i++) {
+                let s = document.getElementById('step' + i), c = document.getElementById('conn' + (i - 1));
+                s.classList.remove('active', 'completed');
+                if (c) c.classList.remove('completed');
+                if (i < step) { s.classList.add('completed'); s.querySelector('.step-num').innerHTML = '✓'; if (c) c.classList.add('completed'); }
+                else if (i === step) { s.classList.add('active'); s.querySelector('.step-num').textContent = i; }
+                else { s.querySelector('.step-num').textContent = i; }
+            }
+        }
+
+        document.getElementById('fileInput').onchange = function(e) { if (e.target.files.length) handleFile(e.target.files[0]); };
+
+        function handleFile(file) {
+            let name = file.name.toLowerCase();
+            fileName = file.name;
+            if (!name.endsWith('.csv') && !name.endsWith('.xlsx') && !name.endsWith('.xls')) { alert('Please upload CSV or Excel file'); return; }
+            showLoading('Reading file...');
+            if (name.endsWith('.csv')) {
+                Papa.parse(file, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: r => processData(r.data, r.meta.fields || []), error: e => { hideLoading(); alert(e.message); } });
+            } else {
+                let reader = new FileReader();
+                reader.onload = e => {
+                    try {
+                        let wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                        let data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+                        processData(data, data.length ? Object.keys(data[0]) : []);
+                    } catch (err) { hideLoading(); alert(err.message); }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function processData(data, cols) {
+            rawData = data; allColumns = cols; numericCols = [];
+            for (let col of cols) {
+                let nc = 0, t = 0;
+                for (let j = 0; j < Math.min(data.length, 100); j++) {
+                    let v = data[j][col];
+                    if (v !== null && v !== undefined && v !== '') { t++; if (typeof v === 'number' || !isNaN(parseFloat(v))) nc++; }
+                }
+                if (t > 0 && nc / t > 0.5) numericCols.push(col);
+            }
+            document.getElementById('uploadBox').classList.add('loaded');
+            document.getElementById('uploadStatus').className = 'upload-status success';
+            document.getElementById('uploadStatus').textContent = '✓ Loaded: ' + data.length + ' rows × ' + cols.length + ' columns';
+            populateSelectors();
+            document.getElementById('configSection').classList.remove('hidden');
+            updateRoadmap(2);
+            hideLoading();
+        }
+
+        function populateSelectors() {
+            ['rowField', 'colField'].forEach(id => {
+                let sel = document.getElementById(id);
+                sel.innerHTML = '<option value="">-- Select --</option>';
+                allColumns.forEach(col => { sel.innerHTML += '<option value="' + col + '">' + col + '</option>'; });
+            });
+            let vs = document.getElementById('valueField');
+            vs.innerHTML = '<option value="">-- Select --</option>';
+            numericCols.forEach(col => { vs.innerHTML += '<option value="' + col + '">' + col + '</option>'; });
+        }
+
+        function updateFilters(type) {
+            let field = document.getElementById(type === 'row' ? 'rowField' : 'colField').value;
+            let section = document.getElementById(type + 'FilterSection');
+            let grid = document.getElementById(type + 'FilterGrid');
+            if (!field) { section.classList.add('hidden'); return; }
+            section.classList.remove('hidden');
+            let unique = [...new Set(rawData.map(r => String(r[field] ?? '')))].sort();
+            grid.innerHTML = '';
+            unique.forEach((val, idx) => {
+                let div = document.createElement('div');
+                div.className = 'filter-item selected';
+                div.innerHTML = '<input type="checkbox" id="' + type + 'F_' + idx + '" value="' + val + '" checked><label for="' + type + 'F_' + idx + '">' + (val || '(empty)') + '</label>';
+                div.onclick = function(e) { if (e.target.tagName !== 'INPUT') { let cb = div.querySelector('input'); cb.checked = !cb.checked; } div.classList.toggle('selected', div.querySelector('input').checked); };
+                grid.appendChild(div);
+            });
+        }
+
+        function toggleAll(prefix, state) {
+            document.querySelectorAll('#' + prefix + 'Grid .filter-item').forEach(item => { item.querySelector('input').checked = state; item.classList.toggle('selected', state); });
+        }
+
+        function getFilterValues(type) {
+            let cbs = document.querySelectorAll('#' + type + 'FilterGrid input:checked');
+            return cbs.length === 0 ? null : Array.from(cbs).map(cb => cb.value);
+        }
+
+        function selectAgg(el) {
+            document.querySelectorAll('.agg-option').forEach(o => o.classList.remove('selected'));
+            el.classList.add('selected');
+            currentAgg = el.dataset.agg;
+        }
+
+        function resetConfig() {
+            document.querySelectorAll('.form-control').forEach(el => { if (el.tagName === 'SELECT') el.selectedIndex = 0; });
+            document.getElementById('rowFilterSection').classList.add('hidden');
+            document.getElementById('colFilterSection').classList.add('hidden');
+            document.querySelectorAll('.agg-option').forEach(o => o.classList.remove('selected'));
+            document.querySelector('.agg-option[data-agg="sum"]').classList.add('selected');
+            currentAgg = 'sum';
+        }
+
+        function resetAll() {
+            resetConfig(); rawData = []; allColumns = []; numericCols = []; pivotResult = null;
+            document.getElementById('uploadBox').classList.remove('loaded');
+            document.getElementById('uploadStatus').textContent = '';
+            document.getElementById('uploadStatus').className = 'upload-status';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('configSection').classList.add('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            updateRoadmap(1);
+        }
+
+        function generatePivot() {
+            let rowField = document.getElementById('rowField').value;
+            let colField = document.getElementById('colField').value;
+            let valueField = document.getElementById('valueField').value;
+            if (!rowField || !colField || !valueField) { alert('Please select Row Field, Column Field, and Value Field.'); return; }
+            showLoading('Generating pivot table...');
+            updateRoadmap(3);
+            setTimeout(() => {
+                try {
+                    let rowFilters = getFilterValues('row'), colFilters = getFilterValues('col');
+                    let filtered = rawData.filter(row => {
+                        let rMatch = !rowFilters || rowFilters.includes(String(row[rowField] ?? ''));
+                        let cMatch = !colFilters || colFilters.includes(String(row[colField] ?? ''));
+                        return rMatch && cMatch;
+                    });
+                    let rowKeys = [...new Set(filtered.map(r => String(r[rowField] ?? '')))].sort();
+                    let colKeys = [...new Set(filtered.map(r => String(r[colField] ?? '')))].sort();
+                    let pivot = {}, rowTotals = {}, colTotals = {}, grandData = { sum: 0, count: 0, values: [] };
+                    rowKeys.forEach(rk => { pivot[rk] = {}; rowTotals[rk] = { sum: 0, count: 0, values: [] }; });
+                    colKeys.forEach(ck => { colTotals[ck] = { sum: 0, count: 0, values: [] }; });
+                    filtered.forEach(row => {
+                        let rk = String(row[rowField] ?? ''), ck = String(row[colField] ?? ''), val = parseFloat(row[valueField]) || 0;
+                        if (!pivot[rk][ck]) pivot[rk][ck] = { sum: 0, count: 0, values: [] };
+                        pivot[rk][ck].sum += val; pivot[rk][ck].count++; pivot[rk][ck].values.push(val);
+                        rowTotals[rk].sum += val; rowTotals[rk].count++; rowTotals[rk].values.push(val);
+                        colTotals[ck].sum += val; colTotals[ck].count++; colTotals[ck].values.push(val);
+                        grandData.sum += val; grandData.count++; grandData.values.push(val);
+                    });
+                    pivotResult = { pivot, rowKeys, colKeys, rowTotals, colTotals, grandData, rowField, colField, valueField, totalRecords: filtered.length };
+                    renderSummary(); renderTable();
+                    document.getElementById('resultsSection').classList.remove('hidden');
+                    hideLoading();
+                    document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+                } catch (err) { hideLoading(); alert('Error: ' + err.message); }
+            }, 100);
+        }
+
+        function aggValue(d) {
+            if (!d || d.count === 0) return 0;
+            switch (currentAgg) {
+                case 'sum': return d.sum;
+                case 'count': return d.count;
+                case 'average': return d.sum / d.count;
+                case 'min': return d.values.length ? Math.min(...d.values) : 0;
+                case 'max': return d.values.length ? Math.max(...d.values) : 0;
+                default: return d.sum;
+            }
+        }
+
+        function fmtNum(n) {
+            if (currentAgg === 'count') return Math.round(n).toLocaleString();
+            if (currentAgg === 'average') return n.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            return n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+        }
+
+        function renderSummary() {
+            let p = pivotResult;
+            let label = { sum: 'Sum', count: 'Count', average: 'Average', min: 'Min', max: 'Max' }[currentAgg];
+            document.getElementById('summaryCards').innerHTML =
+                '<div class="summary-card"><div class="value">' + p.totalRecords.toLocaleString() + '</div><div class="label">Records Used</div></div>' +
+                '<div class="summary-card"><div class="value">' + p.rowKeys.length + '</div><div class="label">Row Categories</div></div>' +
+                '<div class="summary-card"><div class="value">' + p.colKeys.length + '</div><div class="label">Column Categories</div></div>' +
+                '<div class="summary-card"><div class="value">' + fmtNum(aggValue(p.grandData)) + '</div><div class="label">Grand ' + label + '</div></div>';
+        }
+
+        function renderTable() {
+            if (!pivotResult) return;
+            let p = pivotResult, sRT = document.getElementById('togRowTotals').checked, sCT = document.getElementById('togColTotals').checked, sGT = document.getElementById('togGrandTotal').checked;
+            let html = '<table class="pivot-table"><thead><tr><th style="text-align:left;position:sticky;left:0;z-index:15;background:#003366;">' + p.rowField + '</th>';
+            p.colKeys.forEach(ck => { html += '<th>' + (ck || '(empty)') + '</th>'; });
+            if (sRT) html += '<th style="background:#1a6b1a;">Row Total</th>';
+            html += '</tr></thead><tbody>';
+            p.rowKeys.forEach(rk => {
+                html += '<tr><td class="row-label">' + (rk || '(empty)') + '</td>';
+                p.colKeys.forEach(ck => { html += '<td>' + fmtNum(aggValue(p.pivot[rk][ck])) + '</td>'; });
+                if (sRT) html += '<td class="total-cell">' + fmtNum(aggValue(p.rowTotals[rk])) + '</td>';
+                html += '</tr>';
+            });
+            if (sCT) {
+                html += '<tr><td class="row-label" style="background:#dce8f5;">Column Total</td>';
+                p.colKeys.forEach(ck => { html += '<td class="total-cell">' + fmtNum(aggValue(p.colTotals[ck])) + '</td>'; });
+                if (sRT && sGT) html += '<td class="grand-total">' + fmtNum(aggValue(p.grandData)) + '</td>';
+                else if (sRT) html += '<td class="total-cell"></td>';
+                html += '</tr>';
+            }
+            html += '</tbody></table>';
+            document.getElementById('tableWrapper').innerHTML = html;
+        }
+
+        function exportExcel() {
+            updateRoadmap(4);
+            let p = pivotResult, sRT = document.getElementById('togRowTotals').checked, sCT = document.getElementById('togColTotals').checked, sGT = document.getElementById('togGrandTotal').checked;
+            let data = [];
+            let header = [p.rowField]; p.colKeys.forEach(ck => header.push(ck || '(empty)')); if (sRT) header.push('Row Total'); data.push(header);
+            p.rowKeys.forEach(rk => {
+                let row = [rk || '(empty)']; p.colKeys.forEach(ck => { row.push(aggValue(p.pivot[rk][ck])); }); if (sRT) row.push(aggValue(p.rowTotals[rk])); data.push(row);
+            });
+            if (sCT) { let tr = ['Column Total']; p.colKeys.forEach(ck => { tr.push(aggValue(p.colTotals[ck])); }); if (sRT && sGT) tr.push(aggValue(p.grandData)); else if (sRT) tr.push(''); data.push(tr); }
+            let wb = XLSX.utils.book_new(); let ws = XLSX.utils.aoa_to_sheet(data); XLSX.utils.book_append_sheet(wb, ws, 'Pivot Table');
+            XLSX.writeFile(wb, fileName.replace(/\.[^/.]+$/, '') + '_Pivot_' + new Date().toISOString().split('T')[0] + '.xlsx');
+        }
+
+        function exportCSV() {
+            updateRoadmap(4);
+            let p = pivotResult, sRT = document.getElementById('togRowTotals').checked, sCT = document.getElementById('togColTotals').checked, sGT = document.getElementById('togGrandTotal').checked;
+            let lines = [];
+            let header = ['"' + p.rowField + '"']; p.colKeys.forEach(ck => header.push('"' + (ck || '(empty)') + '"')); if (sRT) header.push('"Row Total"'); lines.push(header.join(','));
+            p.rowKeys.forEach(rk => {
+                let row = ['"' + (rk || '(empty)') + '"']; p.colKeys.forEach(ck => { row.push(aggValue(p.pivot[rk][ck])); }); if (sRT) row.push(aggValue(p.rowTotals[rk])); lines.push(row.join(','));
+            });
+            if (sCT) { let tr = ['"Column Total"']; p.colKeys.forEach(ck => { tr.push(aggValue(p.colTotals[ck])); }); if (sRT && sGT) tr.push(aggValue(p.grandData)); else if (sRT) tr.push(''); lines.push(tr.join(',')); }
+            let blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            let a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+            a.download = fileName.replace(/\.[^/.]+$/, '') + '_Pivot_' + new Date().toISOString().split('T')[0] + '.csv'; a.click();
+        }
+    </script>
+</body>
+</html>
