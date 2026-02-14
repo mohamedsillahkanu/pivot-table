@@ -127,7 +127,7 @@
             <h3>Informatics Consultancy Firm-Sierra Leone (ICF-SL)</h3>
             <p class="tagline">Driving Data-Driven Solutions for Health and Development</p>
             <h1>PIVOT TABLE TOOL</h1>
-            <p class="subtitle">Upload Data | Build Pivot Tables | Export Results</p>
+            <p class="subtitle">Upload Data | Build Pivot Tables | Quarterly Totals | Export Results</p>
         </div>
 
         <div class="roadmap-bar">
@@ -213,6 +213,8 @@
                     <div class="toggle-item"><input type="checkbox" id="togRowTotals" checked onchange="renderTable()"><label for="togRowTotals">Row Totals</label></div>
                     <div class="toggle-item"><input type="checkbox" id="togColTotals" checked onchange="renderTable()"><label for="togColTotals">Column Totals</label></div>
                     <div class="toggle-item"><input type="checkbox" id="togGrandTotal" checked onchange="renderTable()"><label for="togGrandTotal">Grand Total</label></div>
+                    <div class="toggle-item" style="border-left:2px solid #004080;padding-left:15px;"><input type="checkbox" id="togQuarterly" onchange="onTogglePeriod('quarterly')"><label for="togQuarterly" style="color:#6f42c1;font-weight:700;">Quarterly (Q1–Q4)</label></div>
+                    <div class="toggle-item"><input type="checkbox" id="togBiannual" onchange="onTogglePeriod('biannual')"><label for="togBiannual" style="color:#e67300;font-weight:700;">Biannual (H1–H2)</label></div>
                 </div>
                 <div class="table-wrapper" id="tableWrapper"></div>
                 <div class="button-group">
@@ -226,7 +228,7 @@
         <div class="page-footer">
             <p style="margin:0;font-weight:700;">National Malaria Control Programme</p>
             <p>Ministry of Health, Sierra Leone</p>
-            <p style="font-size:10px;">© 2025 ICF-SL | Pivot Table Tool v1.0</p>
+            <p style="font-size:10px;">© 2025 ICF-SL | Pivot Table Tool v2.0</p>
         </div>
     </div>
 
@@ -306,7 +308,13 @@
             let grid = document.getElementById(type + 'FilterGrid');
             if (!field) { section.classList.add('hidden'); return; }
             section.classList.remove('hidden');
-            let unique = [...new Set(rawData.map(r => String(r[field] ?? '')))].sort();
+            let unique = [...new Set(rawData.map(r => String(r[field] ?? '')))];
+            // Smart sort: numeric if all values are numbers
+            if (unique.every(v => v === '' || !isNaN(parseFloat(v)))) {
+                unique.sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0));
+            } else {
+                unique.sort();
+            }
             grid.innerHTML = '';
             unique.forEach((val, idx) => {
                 let div = document.createElement('div');
@@ -367,8 +375,20 @@
                         let cMatch = !colFilters || colFilters.includes(String(row[colField] ?? ''));
                         return rMatch && cMatch;
                     });
-                    let rowKeys = [...new Set(filtered.map(r => String(r[rowField] ?? '')))].sort();
-                    let colKeys = [...new Set(filtered.map(r => String(r[colField] ?? '')))].sort();
+                    let rowKeys = [...new Set(filtered.map(r => String(r[rowField] ?? '')))];
+                    // Smart sort rows
+                    if (rowKeys.every(k => k !== '' && !isNaN(parseFloat(k)))) {
+                        rowKeys.sort((a, b) => parseFloat(a) - parseFloat(b));
+                    } else {
+                        rowKeys.sort();
+                    }
+                    let colKeys = [...new Set(filtered.map(r => String(r[colField] ?? '')))];
+                    // Smart sort columns: numeric ascending if all numeric
+                    if (colKeys.every(k => k !== '' && !isNaN(parseFloat(k)))) {
+                        colKeys.sort((a, b) => parseFloat(a) - parseFloat(b));
+                    } else {
+                        colKeys.sort();
+                    }
                     let pivot = {}, rowTotals = {}, colTotals = {}, grandData = { sum: 0, count: 0, values: [] };
                     rowKeys.forEach(rk => { pivot[rk] = {}; rowTotals[rk] = { sum: 0, count: 0, values: [] }; });
                     colKeys.forEach(ck => { colTotals[ck] = { sum: 0, count: 0, values: [] }; });
@@ -417,22 +437,108 @@
                 '<div class="summary-card"><div class="value">' + fmtNum(aggValue(p.grandData)) + '</div><div class="label">Grand ' + label + '</div></div>';
         }
 
+        // Mutual exclusion: quarterly vs biannual
+        function onTogglePeriod(which) {
+            if (which === 'quarterly' && document.getElementById('togQuarterly').checked) {
+                document.getElementById('togBiannual').checked = false;
+            } else if (which === 'biannual' && document.getElementById('togBiannual').checked) {
+                document.getElementById('togQuarterly').checked = false;
+            }
+            renderTable();
+        }
+
+        // Helper: check if colKeys represent numeric months
+        function isMonthlyColumns() {
+            if (!pivotResult) return false;
+            return pivotResult.colKeys.every(k => k !== '' && !isNaN(parseFloat(k)));
+        }
+
+        // Build column layout with optional quarterly/biannual insertions
+        function getDisplayColumns() {
+            let p = pivotResult;
+            let sQ = document.getElementById('togQuarterly').checked && isMonthlyColumns();
+            let sB = document.getElementById('togBiannual').checked && isMonthlyColumns();
+            let cols = [];
+
+            if (!sQ && !sB) {
+                p.colKeys.forEach(ck => cols.push({ key: ck, label: ck || '(empty)', type: 'data' }));
+            } else if (sQ) {
+                let qGroups = { 1: [], 2: [], 3: [], 4: [] };
+                p.colKeys.forEach(ck => {
+                    let m = parseFloat(ck);
+                    let q = m <= 3 ? 1 : m <= 6 ? 2 : m <= 9 ? 3 : 4;
+                    qGroups[q].push(ck);
+                });
+                for (let q = 1; q <= 4; q++) {
+                    if (qGroups[q].length > 0) {
+                        qGroups[q].forEach(ck => cols.push({ key: ck, label: ck, type: 'data' }));
+                        cols.push({ key: 'Q' + q, label: 'Q' + q, type: 'periodic', months: qGroups[q].slice(), color: '#6f42c1', bg: '#f0e6ff', bgTotal: '#e0d4f5' });
+                    }
+                }
+            } else if (sB) {
+                let hGroups = { 1: [], 2: [] };
+                p.colKeys.forEach(ck => {
+                    let m = parseFloat(ck);
+                    let h = m <= 6 ? 1 : 2;
+                    hGroups[h].push(ck);
+                });
+                for (let h = 1; h <= 2; h++) {
+                    if (hGroups[h].length > 0) {
+                        hGroups[h].forEach(ck => cols.push({ key: ck, label: ck, type: 'data' }));
+                        cols.push({ key: 'H' + h, label: 'H' + h, type: 'periodic', months: hGroups[h].slice(), color: '#e67300', bg: '#fff3e0', bgTotal: '#ffe0b2' });
+                    }
+                }
+            }
+            return cols;
+        }
+
+        function calcQuarterlyValue(pivot, rowKey, monthKeys) {
+            let sum = 0, count = 0, values = [];
+            monthKeys.forEach(mk => {
+                let cell = pivot[rowKey] ? pivot[rowKey][mk] : null;
+                if (cell) { sum += cell.sum; count += cell.count; cell.values.forEach(v => values.push(v)); }
+            });
+            return { sum, count, values };
+        }
+
         function renderTable() {
             if (!pivotResult) return;
             let p = pivotResult, sRT = document.getElementById('togRowTotals').checked, sCT = document.getElementById('togColTotals').checked, sGT = document.getElementById('togGrandTotal').checked;
+            let displayCols = getDisplayColumns();
+
             let html = '<table class="pivot-table"><thead><tr><th style="text-align:left;position:sticky;left:0;z-index:15;background:#003366;">' + p.rowField + '</th>';
-            p.colKeys.forEach(ck => { html += '<th>' + (ck || '(empty)') + '</th>'; });
+            displayCols.forEach(dc => {
+                if (dc.type === 'periodic') html += '<th style="background:' + dc.color + ';">' + dc.label + '</th>';
+                else html += '<th>' + dc.label + '</th>';
+            });
             if (sRT) html += '<th style="background:#1a6b1a;">Row Total</th>';
             html += '</tr></thead><tbody>';
+
             p.rowKeys.forEach(rk => {
                 html += '<tr><td class="row-label">' + (rk || '(empty)') + '</td>';
-                p.colKeys.forEach(ck => { html += '<td>' + fmtNum(aggValue(p.pivot[rk][ck])) + '</td>'; });
+                displayCols.forEach(dc => {
+                    if (dc.type === 'periodic') {
+                        let qData = calcQuarterlyValue(p.pivot, rk, dc.months);
+                        html += '<td style="background:' + dc.bg + ';font-weight:700;color:' + dc.color + ';">' + fmtNum(aggValue(qData)) + '</td>';
+                    } else {
+                        html += '<td>' + fmtNum(aggValue(p.pivot[rk][dc.key])) + '</td>';
+                    }
+                });
                 if (sRT) html += '<td class="total-cell">' + fmtNum(aggValue(p.rowTotals[rk])) + '</td>';
                 html += '</tr>';
             });
+
             if (sCT) {
                 html += '<tr><td class="row-label" style="background:#dce8f5;">Column Total</td>';
-                p.colKeys.forEach(ck => { html += '<td class="total-cell">' + fmtNum(aggValue(p.colTotals[ck])) + '</td>'; });
+                displayCols.forEach(dc => {
+                    if (dc.type === 'periodic') {
+                        let qSum = 0, qCount = 0, qVals = [];
+                        dc.months.forEach(mk => { let ct = p.colTotals[mk]; if (ct) { qSum += ct.sum; qCount += ct.count; ct.values.forEach(v => qVals.push(v)); } });
+                        html += '<td style="background:' + dc.bgTotal + ';font-weight:700;color:' + dc.color + ';">' + fmtNum(aggValue({ sum: qSum, count: qCount, values: qVals })) + '</td>';
+                    } else {
+                        html += '<td class="total-cell">' + fmtNum(aggValue(p.colTotals[dc.key])) + '</td>';
+                    }
+                });
                 if (sRT && sGT) html += '<td class="grand-total">' + fmtNum(aggValue(p.grandData)) + '</td>';
                 else if (sRT) html += '<td class="total-cell"></td>';
                 html += '</tr>';
@@ -444,12 +550,28 @@
         function exportExcel() {
             updateRoadmap(4);
             let p = pivotResult, sRT = document.getElementById('togRowTotals').checked, sCT = document.getElementById('togColTotals').checked, sGT = document.getElementById('togGrandTotal').checked;
+            let displayCols = getDisplayColumns();
             let data = [];
-            let header = [p.rowField]; p.colKeys.forEach(ck => header.push(ck || '(empty)')); if (sRT) header.push('Row Total'); data.push(header);
+            let header = [p.rowField]; displayCols.forEach(dc => header.push(dc.label)); if (sRT) header.push('Row Total'); data.push(header);
             p.rowKeys.forEach(rk => {
-                let row = [rk || '(empty)']; p.colKeys.forEach(ck => { row.push(aggValue(p.pivot[rk][ck])); }); if (sRT) row.push(aggValue(p.rowTotals[rk])); data.push(row);
+                let row = [rk || '(empty)'];
+                displayCols.forEach(dc => {
+                    if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(p.pivot, rk, dc.months)));
+                    else row.push(aggValue(p.pivot[rk][dc.key]));
+                });
+                if (sRT) row.push(aggValue(p.rowTotals[rk])); data.push(row);
             });
-            if (sCT) { let tr = ['Column Total']; p.colKeys.forEach(ck => { tr.push(aggValue(p.colTotals[ck])); }); if (sRT && sGT) tr.push(aggValue(p.grandData)); else if (sRT) tr.push(''); data.push(tr); }
+            if (sCT) {
+                let tr = ['Column Total'];
+                displayCols.forEach(dc => {
+                    if (dc.type === 'periodic') {
+                        let qS = 0, qC = 0, qV = [];
+                        dc.months.forEach(mk => { let ct = p.colTotals[mk]; if (ct) { qS += ct.sum; qC += ct.count; ct.values.forEach(v => qV.push(v)); } });
+                        tr.push(aggValue({ sum: qS, count: qC, values: qV }));
+                    } else tr.push(aggValue(p.colTotals[dc.key]));
+                });
+                if (sRT && sGT) tr.push(aggValue(p.grandData)); else if (sRT) tr.push(''); data.push(tr);
+            }
             let wb = XLSX.utils.book_new(); let ws = XLSX.utils.aoa_to_sheet(data); XLSX.utils.book_append_sheet(wb, ws, 'Pivot Table');
             XLSX.writeFile(wb, fileName.replace(/\.[^/.]+$/, '') + '_Pivot_' + new Date().toISOString().split('T')[0] + '.xlsx');
         }
@@ -457,12 +579,28 @@
         function exportCSV() {
             updateRoadmap(4);
             let p = pivotResult, sRT = document.getElementById('togRowTotals').checked, sCT = document.getElementById('togColTotals').checked, sGT = document.getElementById('togGrandTotal').checked;
+            let displayCols = getDisplayColumns();
             let lines = [];
-            let header = ['"' + p.rowField + '"']; p.colKeys.forEach(ck => header.push('"' + (ck || '(empty)') + '"')); if (sRT) header.push('"Row Total"'); lines.push(header.join(','));
+            let header = ['"' + p.rowField + '"']; displayCols.forEach(dc => header.push('"' + dc.label + '"')); if (sRT) header.push('"Row Total"'); lines.push(header.join(','));
             p.rowKeys.forEach(rk => {
-                let row = ['"' + (rk || '(empty)') + '"']; p.colKeys.forEach(ck => { row.push(aggValue(p.pivot[rk][ck])); }); if (sRT) row.push(aggValue(p.rowTotals[rk])); lines.push(row.join(','));
+                let row = ['"' + (rk || '(empty)') + '"'];
+                displayCols.forEach(dc => {
+                    if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(p.pivot, rk, dc.months)));
+                    else row.push(aggValue(p.pivot[rk][dc.key]));
+                });
+                if (sRT) row.push(aggValue(p.rowTotals[rk])); lines.push(row.join(','));
             });
-            if (sCT) { let tr = ['"Column Total"']; p.colKeys.forEach(ck => { tr.push(aggValue(p.colTotals[ck])); }); if (sRT && sGT) tr.push(aggValue(p.grandData)); else if (sRT) tr.push(''); lines.push(tr.join(',')); }
+            if (sCT) {
+                let tr = ['"Column Total"'];
+                displayCols.forEach(dc => {
+                    if (dc.type === 'periodic') {
+                        let qS = 0, qC = 0, qV = [];
+                        dc.months.forEach(mk => { let ct = p.colTotals[mk]; if (ct) { qS += ct.sum; qC += ct.count; ct.values.forEach(v => qV.push(v)); } });
+                        tr.push(aggValue({ sum: qS, count: qC, values: qV }));
+                    } else tr.push(aggValue(p.colTotals[dc.key]));
+                });
+                if (sRT && sGT) tr.push(aggValue(p.grandData)); else if (sRT) tr.push(''); lines.push(tr.join(','));
+            }
             let blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
             let a = document.createElement('a'); a.href = URL.createObjectURL(blob);
             a.download = fileName.replace(/\.[^/.]+$/, '') + '_Pivot_' + new Date().toISOString().split('T')[0] + '.csv'; a.click();
