@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICF-SL Pivot Table Tool</title>
+    <title>ICF-SL Pivot Table Tool - Enhanced</title>
     <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -58,6 +58,7 @@
         .form-control { width: 100%; padding: 12px 14px; border: 2px solid #004080; border-radius: 6px; font-size: 14px; font-family: 'Oswald', Arial, sans-serif; background: #fff; color: #000; }
         .form-control:focus { outline: none; border-color: #0056b3; box-shadow: 0 0 0 3px rgba(0,64,128,0.2); }
         .form-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 15px; }
+        .form-row-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 15px; }
         .config-card { background: #f8f9fa; padding: 1.5rem; border-radius: 8px; border: 2px solid #004080; margin: 1rem 0; }
         .config-card h4 { color: #004080; margin-bottom: 1rem; font-size: 14px; display: flex; align-items: center; gap: 10px; }
         .config-card.highlight { background: #e7f3ff; }
@@ -88,10 +89,12 @@
         .pivot-table th { background: #004080; color: #fff; font-weight: 700; position: sticky; top: 0; z-index: 10; text-align: center; }
         .pivot-table td { text-align: right; }
         .pivot-table td.row-label { text-align: left; background: #e7f3ff; font-weight: 700; color: #004080; position: sticky; left: 0; z-index: 5; }
-        .pivot-table tr:nth-child(even) td:not(.row-label):not(.total-cell):not(.grand-total) { background: #f8f9fa; }
+        .pivot-table td.hf-type-label { text-align: left; background: #d0e7ff; font-weight: 700; color: #003366; position: sticky; left: 0; z-index: 5; padding-left: 30px; font-style: italic; }
+        .pivot-table tr:nth-child(even) td:not(.row-label):not(.hf-type-label):not(.total-cell):not(.grand-total) { background: #f8f9fa; }
         .pivot-table tr:hover td:not(.total-cell):not(.grand-total) { background: #e7f3ff; }
         .pivot-table .total-cell { background: #dce8f5; font-weight: 700; color: #004080; }
         .pivot-table .grand-total { background: #004080; color: #fff; font-weight: 700; }
+        .pivot-table .hf-subtotal { background: #b8d4f0; font-weight: 700; color: #003366; font-style: italic; }
         .button-group { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 25px; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
         .loading-overlay.hidden { display: none; }
@@ -101,7 +104,9 @@
         .hidden { display: none !important; }
         .page-footer { background-color: #004080; color: #ffffff; padding: 20px 30px; text-align: center; font-size: 13px; line-height: 1.7; font-weight: 500; border-radius: 0 0 8px 8px; }
         .page-footer p { margin: 6px 0 0; font-size: 12px; color: #ffffff; }
-        @media (max-width: 900px) { .form-row, .summary-cards { grid-template-columns: 1fr; } .roadmap-bar { justify-content: center; } .filter-grid { grid-template-columns: 1fr; } }
+        .info-box { background: #fff3cd; border: 2px solid #ffc107; border-radius: 6px; padding: 12px 16px; margin: 10px 0; }
+        .info-box p { margin: 0; font-size: 12px; color: #856404; }
+        @media (max-width: 900px) { .form-row, .form-row-3, .summary-cards { grid-template-columns: 1fr; } .roadmap-bar { justify-content: center; } .filter-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -126,8 +131,8 @@
             <div class="logo-row"><div class="logo-box"><img src="https://github.com/mohamedsillahkanu/gdp-dashboard-2/raw/6c7463b0d5c3be150aafae695a4bcbbd8aeb1499/ICF-SL.jpg" alt="ICF-SL Logo"></div></div>
             <h3>Informatics Consultancy Firm-Sierra Leone (ICF-SL)</h3>
             <p class="tagline">Driving Data-Driven Solutions for Health and Development</p>
-            <h1>PIVOT TABLE TOOL</h1>
-            <p class="subtitle">Upload Data | Build Pivot Tables | Quarterly Totals | Export Results</p>
+            <h1>PIVOT TABLE TOOL - ENHANCED</h1>
+            <p class="subtitle">HF Type Analysis | Quarterly Totals | Multi-Dimensional Reports</p>
         </div>
 
         <div class="roadmap-bar">
@@ -160,14 +165,22 @@
                 <div class="section-header"><span class="section-icon">2</span><span class="section-title">CONFIGURE PIVOT TABLE</span></div>
 
                 <div class="config-card highlight">
-                    <h4><svg class="icon"><use href="#icon-table"/></svg> ROW & COLUMN FIELDS</h4>
-                    <div class="form-row">
+                    <h4><svg class="icon"><use href="#icon-table"/></svg> PRIMARY GROUPING FIELDS</h4>
+                    <div class="form-row-3">
                         <div class="form-group">
                             <label>Row Field *</label>
                             <select id="rowField" class="form-control" onchange="updateFilters('row')"><option value="">-- Select Row Field --</option></select>
                             <div id="rowFilterSection" class="hidden" style="margin-top:10px;">
                                 <div class="filter-actions"><button class="sel-all" onclick="toggleAll('rowFilter',true)">Select All</button><button class="sel-none" onclick="toggleAll('rowFilter',false)">Clear All</button></div>
                                 <div class="filter-grid" id="rowFilterGrid"></div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>HF Type Field (Optional)</label>
+                            <select id="hfTypeField" class="form-control" onchange="updateFilters('hfType')"><option value="">-- No HF Type --</option></select>
+                            <div id="hfTypeFilterSection" class="hidden" style="margin-top:10px;">
+                                <div class="filter-actions"><button class="sel-all" onclick="toggleAll('hfTypeFilter',true)">Select All</button><button class="sel-none" onclick="toggleAll('hfTypeFilter',false)">Clear All</button></div>
+                                <div class="filter-grid" id="hfTypeFilterGrid"></div>
                             </div>
                         </div>
                         <div class="form-group">
@@ -178,6 +191,9 @@
                                 <div class="filter-grid" id="colFilterGrid"></div>
                             </div>
                         </div>
+                    </div>
+                    <div class="info-box">
+                        <p><strong>💡 Tip:</strong> If you select HF Type field, rows will be grouped by HF Type with subtotals for each type.</p>
                     </div>
                 </div>
 
@@ -228,7 +244,7 @@
         <div class="page-footer">
             <p style="margin:0;font-weight:700;">National Malaria Control Programme</p>
             <p>Ministry of Health, Sierra Leone</p>
-            <p style="font-size:10px;">© 2025 ICF-SL | Pivot Table Tool v2.0</p>
+            <p style="font-size:10px;">© 2025 ICF-SL | Enhanced Pivot Table Tool v2.1</p>
         </div>
     </div>
 
@@ -292,9 +308,9 @@
         }
 
         function populateSelectors() {
-            ['rowField', 'colField'].forEach(id => {
+            ['rowField', 'colField', 'hfTypeField'].forEach(id => {
                 let sel = document.getElementById(id);
-                sel.innerHTML = '<option value="">-- Select --</option>';
+                sel.innerHTML = id === 'hfTypeField' ? '<option value="">-- No HF Type --</option>' : '<option value="">-- Select --</option>';
                 allColumns.forEach(col => { sel.innerHTML += '<option value="' + col + '">' + col + '</option>'; });
             });
             let vs = document.getElementById('valueField');
@@ -303,13 +319,13 @@
         }
 
         function updateFilters(type) {
-            let field = document.getElementById(type === 'row' ? 'rowField' : 'colField').value;
+            let fieldMap = { row: 'rowField', col: 'colField', hfType: 'hfTypeField' };
+            let field = document.getElementById(fieldMap[type]).value;
             let section = document.getElementById(type + 'FilterSection');
             let grid = document.getElementById(type + 'FilterGrid');
             if (!field) { section.classList.add('hidden'); return; }
             section.classList.remove('hidden');
             let unique = [...new Set(rawData.map(r => String(r[field] ?? '')))];
-            // Smart sort: numeric if all values are numbers
             if (unique.every(v => v === '' || !isNaN(parseFloat(v)))) {
                 unique.sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0));
             } else {
@@ -342,8 +358,7 @@
 
         function resetConfig() {
             document.querySelectorAll('.form-control').forEach(el => { if (el.tagName === 'SELECT') el.selectedIndex = 0; });
-            document.getElementById('rowFilterSection').classList.add('hidden');
-            document.getElementById('colFilterSection').classList.add('hidden');
+            ['row', 'col', 'hfType'].forEach(t => document.getElementById(t + 'FilterSection').classList.add('hidden'));
             document.querySelectorAll('.agg-option').forEach(o => o.classList.remove('selected'));
             document.querySelector('.agg-option[data-agg="sum"]').classList.add('selected');
             currentAgg = 'sum';
@@ -364,43 +379,127 @@
             let rowField = document.getElementById('rowField').value;
             let colField = document.getElementById('colField').value;
             let valueField = document.getElementById('valueField').value;
+            let hfTypeField = document.getElementById('hfTypeField').value;
             if (!rowField || !colField || !valueField) { alert('Please select Row Field, Column Field, and Value Field.'); return; }
             showLoading('Generating pivot table...');
             updateRoadmap(3);
             setTimeout(() => {
                 try {
-                    let rowFilters = getFilterValues('row'), colFilters = getFilterValues('col');
+                    let rowFilters = getFilterValues('row'), colFilters = getFilterValues('col'), hfTypeFilters = hfTypeField ? getFilterValues('hfType') : null;
                     let filtered = rawData.filter(row => {
                         let rMatch = !rowFilters || rowFilters.includes(String(row[rowField] ?? ''));
                         let cMatch = !colFilters || colFilters.includes(String(row[colField] ?? ''));
-                        return rMatch && cMatch;
+                        let hMatch = !hfTypeFilters || hfTypeFilters.includes(String(row[hfTypeField] ?? ''));
+                        return rMatch && cMatch && hMatch;
                     });
-                    let rowKeys = [...new Set(filtered.map(r => String(r[rowField] ?? '')))];
-                    // Smart sort rows
-                    if (rowKeys.every(k => k !== '' && !isNaN(parseFloat(k)))) {
-                        rowKeys.sort((a, b) => parseFloat(a) - parseFloat(b));
-                    } else {
-                        rowKeys.sort();
-                    }
+
                     let colKeys = [...new Set(filtered.map(r => String(r[colField] ?? '')))];
-                    // Smart sort columns: numeric ascending if all numeric
                     if (colKeys.every(k => k !== '' && !isNaN(parseFloat(k)))) {
                         colKeys.sort((a, b) => parseFloat(a) - parseFloat(b));
                     } else {
                         colKeys.sort();
                     }
+
                     let pivot = {}, rowTotals = {}, colTotals = {}, grandData = { sum: 0, count: 0, values: [] };
-                    rowKeys.forEach(rk => { pivot[rk] = {}; rowTotals[rk] = { sum: 0, count: 0, values: [] }; });
-                    colKeys.forEach(ck => { colTotals[ck] = { sum: 0, count: 0, values: [] }; });
-                    filtered.forEach(row => {
-                        let rk = String(row[rowField] ?? ''), ck = String(row[colField] ?? ''), val = parseFloat(row[valueField]) || 0;
-                        if (!pivot[rk][ck]) pivot[rk][ck] = { sum: 0, count: 0, values: [] };
-                        pivot[rk][ck].sum += val; pivot[rk][ck].count++; pivot[rk][ck].values.push(val);
-                        rowTotals[rk].sum += val; rowTotals[rk].count++; rowTotals[rk].values.push(val);
-                        colTotals[ck].sum += val; colTotals[ck].count++; colTotals[ck].values.push(val);
-                        grandData.sum += val; grandData.count++; grandData.values.push(val);
-                    });
-                    pivotResult = { pivot, rowKeys, colKeys, rowTotals, colTotals, grandData, rowField, colField, valueField, totalRecords: filtered.length };
+                    let rowKeys = [], hfTypeData = {};
+
+                    if (hfTypeField) {
+                        // Group by HF Type
+                        let hfTypes = [...new Set(filtered.map(r => String(r[hfTypeField] ?? '')))].sort();
+                        hfTypes.forEach(hfType => {
+                            let hfRows = filtered.filter(r => String(r[hfTypeField] ?? '') === hfType);
+                            let hfRowKeys = [...new Set(hfRows.map(r => String(r[rowField] ?? '')))];
+                            if (hfRowKeys.every(k => k !== '' && !isNaN(parseFloat(k)))) {
+                                hfRowKeys.sort((a, b) => parseFloat(a) - parseFloat(b));
+                            } else {
+                                hfRowKeys.sort();
+                            }
+                            
+                            hfTypeData[hfType] = { 
+                                rowKeys: hfRowKeys, 
+                                pivot: {}, 
+                                rowTotals: {},
+                                subtotalData: { sum: 0, count: 0, values: [] }
+                            };
+
+                            hfRowKeys.forEach(rk => {
+                                let fullKey = hfType + '|' + rk;
+                                rowKeys.push(fullKey);
+                                pivot[fullKey] = {};
+                                rowTotals[fullKey] = { sum: 0, count: 0, values: [] };
+                                hfTypeData[hfType].pivot[rk] = {};
+                                hfTypeData[hfType].rowTotals[rk] = { sum: 0, count: 0, values: [] };
+                            });
+                        });
+
+                        colKeys.forEach(ck => { colTotals[ck] = { sum: 0, count: 0, values: [] }; });
+
+                        filtered.forEach(row => {
+                            let hfType = String(row[hfTypeField] ?? '');
+                            let rk = String(row[rowField] ?? '');
+                            let ck = String(row[colField] ?? '');
+                            let val = parseFloat(row[valueField]) || 0;
+                            let fullKey = hfType + '|' + rk;
+
+                            if (!pivot[fullKey][ck]) pivot[fullKey][ck] = { sum: 0, count: 0, values: [] };
+                            if (!hfTypeData[hfType].pivot[rk][ck]) hfTypeData[hfType].pivot[rk][ck] = { sum: 0, count: 0, values: [] };
+
+                            pivot[fullKey][ck].sum += val;
+                            pivot[fullKey][ck].count++;
+                            pivot[fullKey][ck].values.push(val);
+
+                            hfTypeData[hfType].pivot[rk][ck].sum += val;
+                            hfTypeData[hfType].pivot[rk][ck].count++;
+                            hfTypeData[hfType].pivot[rk][ck].values.push(val);
+
+                            rowTotals[fullKey].sum += val;
+                            rowTotals[fullKey].count++;
+                            rowTotals[fullKey].values.push(val);
+
+                            hfTypeData[hfType].rowTotals[rk].sum += val;
+                            hfTypeData[hfType].rowTotals[rk].count++;
+                            hfTypeData[hfType].rowTotals[rk].values.push(val);
+
+                            hfTypeData[hfType].subtotalData.sum += val;
+                            hfTypeData[hfType].subtotalData.count++;
+                            hfTypeData[hfType].subtotalData.values.push(val);
+
+                            colTotals[ck].sum += val;
+                            colTotals[ck].count++;
+                            colTotals[ck].values.push(val);
+
+                            grandData.sum += val;
+                            grandData.count++;
+                            grandData.values.push(val);
+                        });
+
+                    } else {
+                        // Standard pivot without HF Type
+                        rowKeys = [...new Set(filtered.map(r => String(r[rowField] ?? '')))];
+                        if (rowKeys.every(k => k !== '' && !isNaN(parseFloat(k)))) {
+                            rowKeys.sort((a, b) => parseFloat(a) - parseFloat(b));
+                        } else {
+                            rowKeys.sort();
+                        }
+
+                        rowKeys.forEach(rk => { pivot[rk] = {}; rowTotals[rk] = { sum: 0, count: 0, values: [] }; });
+                        colKeys.forEach(ck => { colTotals[ck] = { sum: 0, count: 0, values: [] }; });
+
+                        filtered.forEach(row => {
+                            let rk = String(row[rowField] ?? ''), ck = String(row[colField] ?? ''), val = parseFloat(row[valueField]) || 0;
+                            if (!pivot[rk][ck]) pivot[rk][ck] = { sum: 0, count: 0, values: [] };
+                            pivot[rk][ck].sum += val; pivot[rk][ck].count++; pivot[rk][ck].values.push(val);
+                            rowTotals[rk].sum += val; rowTotals[rk].count++; rowTotals[rk].values.push(val);
+                            colTotals[ck].sum += val; colTotals[ck].count++; colTotals[ck].values.push(val);
+                            grandData.sum += val; grandData.count++; grandData.values.push(val);
+                        });
+                    }
+
+                    pivotResult = { 
+                        pivot, rowKeys, colKeys, rowTotals, colTotals, grandData, 
+                        rowField, colField, valueField, hfTypeField, hfTypeData,
+                        totalRecords: filtered.length 
+                    };
                     renderSummary(); renderTable();
                     document.getElementById('resultsSection').classList.remove('hidden');
                     hideLoading();
@@ -430,14 +529,14 @@
         function renderSummary() {
             let p = pivotResult;
             let label = { sum: 'Sum', count: 'Count', average: 'Average', min: 'Min', max: 'Max' }[currentAgg];
+            let hfCount = p.hfTypeField ? Object.keys(p.hfTypeData).length : 0;
             document.getElementById('summaryCards').innerHTML =
                 '<div class="summary-card"><div class="value">' + p.totalRecords.toLocaleString() + '</div><div class="label">Records Used</div></div>' +
-                '<div class="summary-card"><div class="value">' + p.rowKeys.length + '</div><div class="label">Row Categories</div></div>' +
+                '<div class="summary-card"><div class="value">' + (p.hfTypeField ? hfCount : p.rowKeys.length) + '</div><div class="label">' + (p.hfTypeField ? 'HF Types' : 'Row Categories') + '</div></div>' +
                 '<div class="summary-card"><div class="value">' + p.colKeys.length + '</div><div class="label">Column Categories</div></div>' +
                 '<div class="summary-card"><div class="value">' + fmtNum(aggValue(p.grandData)) + '</div><div class="label">Grand ' + label + '</div></div>';
         }
 
-        // Mutual exclusion: quarterly vs biannual
         function onTogglePeriod(which) {
             if (which === 'quarterly' && document.getElementById('togQuarterly').checked) {
                 document.getElementById('togBiannual').checked = false;
@@ -447,13 +546,11 @@
             renderTable();
         }
 
-        // Helper: check if colKeys represent numeric months
         function isMonthlyColumns() {
             if (!pivotResult) return false;
             return pivotResult.colKeys.every(k => k !== '' && !isNaN(parseFloat(k)));
         }
 
-        // Build column layout with optional quarterly/biannual insertions
         function getDisplayColumns() {
             let p = pivotResult;
             let sQ = document.getElementById('togQuarterly').checked && isMonthlyColumns();
@@ -514,19 +611,67 @@
             if (sRT) html += '<th style="background:#1a6b1a;">Row Total</th>';
             html += '</tr></thead><tbody>';
 
-            p.rowKeys.forEach(rk => {
-                html += '<tr><td class="row-label">' + (rk || '(empty)') + '</td>';
-                displayCols.forEach(dc => {
-                    if (dc.type === 'periodic') {
-                        let qData = calcQuarterlyValue(p.pivot, rk, dc.months);
-                        html += '<td style="background:' + dc.bg + ';font-weight:700;color:' + dc.color + ';">' + fmtNum(aggValue(qData)) + '</td>';
-                    } else {
-                        html += '<td>' + fmtNum(aggValue(p.pivot[rk][dc.key])) + '</td>';
-                    }
+            if (p.hfTypeField) {
+                // Render with HF Type grouping
+                Object.keys(p.hfTypeData).sort().forEach(hfType => {
+                    let hfData = p.hfTypeData[hfType];
+                    
+                    hfData.rowKeys.forEach(rk => {
+                        let fullKey = hfType + '|' + rk;
+                        html += '<tr><td class="hf-type-label">' + (rk || '(empty)') + '</td>';
+                        displayCols.forEach(dc => {
+                            if (dc.type === 'periodic') {
+                                let qData = calcQuarterlyValue(hfData.pivot, rk, dc.months);
+                                html += '<td style="background:' + dc.bg + ';font-weight:700;color:' + dc.color + ';">' + fmtNum(aggValue(qData)) + '</td>';
+                            } else {
+                                html += '<td>' + fmtNum(aggValue(hfData.pivot[rk][dc.key])) + '</td>';
+                            }
+                        });
+                        if (sRT) html += '<td class="total-cell">' + fmtNum(aggValue(p.rowTotals[fullKey])) + '</td>';
+                        html += '</tr>';
+                    });
+
+                    // HF Type Subtotal Row
+                    html += '<tr><td class="row-label" style="background:#b8d4f0;font-style:italic;">' + hfType + ' Subtotal</td>';
+                    displayCols.forEach(dc => {
+                        if (dc.type === 'periodic') {
+                            let qSum = 0, qCount = 0, qVals = [];
+                            dc.months.forEach(mk => {
+                                hfData.rowKeys.forEach(rk => {
+                                    let cell = hfData.pivot[rk][mk];
+                                    if (cell) { qSum += cell.sum; qCount += cell.count; cell.values.forEach(v => qVals.push(v)); }
+                                });
+                            });
+                            html += '<td class="hf-subtotal" style="background:' + dc.bgTotal + ';color:' + dc.color + ';">' + fmtNum(aggValue({ sum: qSum, count: qCount, values: qVals })) + '</td>';
+                        } else {
+                            let cSum = 0, cCount = 0, cVals = [];
+                            hfData.rowKeys.forEach(rk => {
+                                let cell = hfData.pivot[rk][dc.key];
+                                if (cell) { cSum += cell.sum; cCount += cell.count; cell.values.forEach(v => cVals.push(v)); }
+                            });
+                            html += '<td class="hf-subtotal">' + fmtNum(aggValue({ sum: cSum, count: cCount, values: cVals })) + '</td>';
+                        }
+                    });
+                    if (sRT) html += '<td class="hf-subtotal">' + fmtNum(aggValue(hfData.subtotalData)) + '</td>';
+                    html += '</tr>';
                 });
-                if (sRT) html += '<td class="total-cell">' + fmtNum(aggValue(p.rowTotals[rk])) + '</td>';
-                html += '</tr>';
-            });
+
+            } else {
+                // Standard rendering without HF Type
+                p.rowKeys.forEach(rk => {
+                    html += '<tr><td class="row-label">' + (rk || '(empty)') + '</td>';
+                    displayCols.forEach(dc => {
+                        if (dc.type === 'periodic') {
+                            let qData = calcQuarterlyValue(p.pivot, rk, dc.months);
+                            html += '<td style="background:' + dc.bg + ';font-weight:700;color:' + dc.color + ';">' + fmtNum(aggValue(qData)) + '</td>';
+                        } else {
+                            html += '<td>' + fmtNum(aggValue(p.pivot[rk][dc.key])) + '</td>';
+                        }
+                    });
+                    if (sRT) html += '<td class="total-cell">' + fmtNum(aggValue(p.rowTotals[rk])) + '</td>';
+                    html += '</tr>';
+                });
+            }
 
             if (sCT) {
                 html += '<tr><td class="row-label" style="background:#dce8f5;">Column Total</td>';
@@ -553,14 +698,54 @@
             let displayCols = getDisplayColumns();
             let data = [];
             let header = [p.rowField]; displayCols.forEach(dc => header.push(dc.label)); if (sRT) header.push('Row Total'); data.push(header);
-            p.rowKeys.forEach(rk => {
-                let row = [rk || '(empty)'];
-                displayCols.forEach(dc => {
-                    if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(p.pivot, rk, dc.months)));
-                    else row.push(aggValue(p.pivot[rk][dc.key]));
+
+            if (p.hfTypeField) {
+                Object.keys(p.hfTypeData).sort().forEach(hfType => {
+                    let hfData = p.hfTypeData[hfType];
+                    hfData.rowKeys.forEach(rk => {
+                        let fullKey = hfType + '|' + rk;
+                        let row = [rk || '(empty)'];
+                        displayCols.forEach(dc => {
+                            if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(hfData.pivot, rk, dc.months)));
+                            else row.push(aggValue(hfData.pivot[rk][dc.key]));
+                        });
+                        if (sRT) row.push(aggValue(p.rowTotals[fullKey])); data.push(row);
+                    });
+                    // Subtotal row
+                    let stRow = [hfType + ' Subtotal'];
+                    displayCols.forEach(dc => {
+                        if (dc.type === 'periodic') {
+                            let qS = 0, qC = 0, qV = [];
+                            dc.months.forEach(mk => {
+                                hfData.rowKeys.forEach(rk => {
+                                    let cell = hfData.pivot[rk][mk];
+                                    if (cell) { qS += cell.sum; qC += cell.count; cell.values.forEach(v => qV.push(v)); }
+                                });
+                            });
+                            stRow.push(aggValue({ sum: qS, count: qC, values: qV }));
+                        } else {
+                            let cS = 0, cC = 0, cV = [];
+                            hfData.rowKeys.forEach(rk => {
+                                let cell = hfData.pivot[rk][dc.key];
+                                if (cell) { cS += cell.sum; cC += cell.count; cell.values.forEach(v => cV.push(v)); }
+                            });
+                            stRow.push(aggValue({ sum: cS, count: cC, values: cV }));
+                        }
+                    });
+                    if (sRT) stRow.push(aggValue(hfData.subtotalData));
+                    data.push(stRow);
                 });
-                if (sRT) row.push(aggValue(p.rowTotals[rk])); data.push(row);
-            });
+            } else {
+                p.rowKeys.forEach(rk => {
+                    let row = [rk || '(empty)'];
+                    displayCols.forEach(dc => {
+                        if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(p.pivot, rk, dc.months)));
+                        else row.push(aggValue(p.pivot[rk][dc.key]));
+                    });
+                    if (sRT) row.push(aggValue(p.rowTotals[rk])); data.push(row);
+                });
+            }
+
             if (sCT) {
                 let tr = ['Column Total'];
                 displayCols.forEach(dc => {
@@ -582,14 +767,53 @@
             let displayCols = getDisplayColumns();
             let lines = [];
             let header = ['"' + p.rowField + '"']; displayCols.forEach(dc => header.push('"' + dc.label + '"')); if (sRT) header.push('"Row Total"'); lines.push(header.join(','));
-            p.rowKeys.forEach(rk => {
-                let row = ['"' + (rk || '(empty)') + '"'];
-                displayCols.forEach(dc => {
-                    if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(p.pivot, rk, dc.months)));
-                    else row.push(aggValue(p.pivot[rk][dc.key]));
+
+            if (p.hfTypeField) {
+                Object.keys(p.hfTypeData).sort().forEach(hfType => {
+                    let hfData = p.hfTypeData[hfType];
+                    hfData.rowKeys.forEach(rk => {
+                        let fullKey = hfType + '|' + rk;
+                        let row = ['"' + (rk || '(empty)') + '"'];
+                        displayCols.forEach(dc => {
+                            if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(hfData.pivot, rk, dc.months)));
+                            else row.push(aggValue(hfData.pivot[rk][dc.key]));
+                        });
+                        if (sRT) row.push(aggValue(p.rowTotals[fullKey])); lines.push(row.join(','));
+                    });
+                    let stRow = ['"' + hfType + ' Subtotal"'];
+                    displayCols.forEach(dc => {
+                        if (dc.type === 'periodic') {
+                            let qS = 0, qC = 0, qV = [];
+                            dc.months.forEach(mk => {
+                                hfData.rowKeys.forEach(rk => {
+                                    let cell = hfData.pivot[rk][mk];
+                                    if (cell) { qS += cell.sum; qC += cell.count; cell.values.forEach(v => qV.push(v)); }
+                                });
+                            });
+                            stRow.push(aggValue({ sum: qS, count: qC, values: qV }));
+                        } else {
+                            let cS = 0, cC = 0, cV = [];
+                            hfData.rowKeys.forEach(rk => {
+                                let cell = hfData.pivot[rk][dc.key];
+                                if (cell) { cS += cell.sum; cC += cell.count; cell.values.forEach(v => cV.push(v)); }
+                            });
+                            stRow.push(aggValue({ sum: cS, count: cC, values: cV }));
+                        }
+                    });
+                    if (sRT) stRow.push(aggValue(hfData.subtotalData));
+                    lines.push(stRow.join(','));
                 });
-                if (sRT) row.push(aggValue(p.rowTotals[rk])); lines.push(row.join(','));
-            });
+            } else {
+                p.rowKeys.forEach(rk => {
+                    let row = ['"' + (rk || '(empty)') + '"'];
+                    displayCols.forEach(dc => {
+                        if (dc.type === 'periodic') row.push(aggValue(calcQuarterlyValue(p.pivot, rk, dc.months)));
+                        else row.push(aggValue(p.pivot[rk][dc.key]));
+                    });
+                    if (sRT) row.push(aggValue(p.rowTotals[rk])); lines.push(row.join(','));
+                });
+            }
+
             if (sCT) {
                 let tr = ['"Column Total"'];
                 displayCols.forEach(dc => {
